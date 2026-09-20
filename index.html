@@ -80,11 +80,11 @@
     margin-top:8px;overflow:hidden}
   #alarma .barraTiempo i{display:block;height:100%;background:#fff;border-radius:3px;
     transition:width .5s linear}
-  /* los cuatro escalones */
-  #alarma.t1{background:#4a7c94}     /* 1-4 min  : informativo */
-  #alarma.t2{background:#c98a00}     /* 5-9 min  : ojo */
-  #alarma.t3{background:var(--naranja)}  /* 10-19    : preocupante */
-  #alarma.t4{background:var(--rojo);animation:late 1.3s ease-in-out infinite}
+  /* los cuatro escalones (Pam: el amarillo desde el minuto 1) */
+  #alarma.t1{background:#4a7c94}         /* menos de 1 min : informativo */
+  #alarma.t2{background:#c98a00}         /* 1 - 5 min      : atento */
+  #alarma.t3{background:var(--naranja)}  /* 5 - 15 min     : ponte en marcha */
+  #alarma.t4{background:var(--rojo);animation:late 1.3s ease-in-out infinite}  /* 15+ : ve a mirar */
 
   /* ===== BOTONES DE ESTADO =====
      Dos filas: arriba el estado (volando / en tierra), abajo las llamadas
@@ -583,23 +583,23 @@ function pintaAlarma(todos){
   const otros = raros.length > 1 ? ' (y ' + (raros.length - 1) + ' más)' : '';
 
   let nivel, izq, consejo;
-  if (mins >= 20){
+  if (mins >= 15){
     nivel = 4; izq = '🆘';
     consejo = 'Última posición conocida: la del mapa. Puede ser una zona sin cobertura… '
             + 'o puede haber pasado algo. <b>Ve a mirar.</b>';
-  } else if (mins >= 10){
-    nivel = 3; izq = '⚠️';
-    consejo = 'Empieza a ser raro. Si conoces la zona, mira por dónde iba.';
   } else if (mins >= 5){
+    nivel = 3; izq = '⚠️';
+    consejo = 'Ya son muchos minutos. Si conoces la zona, mira por dónde iba.';
+  } else if (seg >= 60){
     nivel = 2; izq = '⚠️';
-    consejo = 'Sigue sin dar señales. Estate atento al móvil.';
+    consejo = 'Sin señal. Sigue atento: si pasa de 5 minutos, ponte en marcha.';
   } else {
     nivel = 1; izq = '📵';
     consejo = 'Es normal: una ladera o un valle sin cobertura. Se soluciona solo.';
   }
 
-  /* la barra se llena hasta los 20 minutos */
-  const pct = Math.min(100, (g.seg / 1200) * 100);
+  /* la barra se llena hasta los 15 minutos (que es cuando se pone rojo) */
+  const pct = Math.min(100, (g.seg / 900) * 100);
 
   caja.className = 't' + nivel;
   caja.innerHTML = izq + ' <b>' + g.n + ' lleva ' + tiempoEnPalabras(g.seg)
@@ -650,7 +650,7 @@ function pinta(todos){
       cls = 'mudo';
       const m = Math.floor(seg / 60);
       eti = seg < 60 ? '📵 ' + Math.floor(seg) + 's'
-                     : (m >= 20 ? '🔴 ' + m + ' MIN SIN SEÑAL' : '⚠️ ' + m + ' MIN SIN SEÑAL');
+                     : (m >= 15 ? '🔴 ' + m + ' MIN SIN SEÑAL' : '⚠️ ' + m + ' MIN SIN SEÑAL');
     }
     const col = (COLORES.find(c => c.id === p.color) || {}).c || '#888';
     const alt = p.alt ? Math.round(p.alt) + ' m' : '—';
