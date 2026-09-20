@@ -69,7 +69,12 @@
   .lista{padding:12px 10px 90px}
   .pil{background:#fff;border-radius:13px;padding:11px 13px;margin-bottom:8px;
     display:flex;align-items:center;gap:11px;box-shadow:var(--sombra);
-    border-left:6px solid #ccc}
+    border-left:6px solid #ccc;cursor:pointer;transition:box-shadow .15s,transform .1s}
+  .pil:active{transform:scale(.985)}
+  /* el piloto que acabas de tocar: se queda marcado */
+  .pil.senala{box-shadow:var(--sombra),0 0 0 3px var(--mar2)}
+  .pil .ir{font-size:15px;opacity:.35;flex:0 0 auto}
+  .pil:active .ir{opacity:1}
   .pil .bola{width:15px;height:15px;border-radius:50%;flex:0 0 auto}
   .pil .quien{flex:1;min-width:0}
   .pil .nom{font-weight:800;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -398,7 +403,37 @@ function escuchar(cod){
   });
 }
 
+/* ===== TOCAR UN NOMBRE Y QUE TE LLEVE A SU PUNTO (idea de Pam) =====
+   En el monte no quieres buscar el puntito en el mapa: quieres tocar el
+   nombre y que el mapa vaya a el. */
+let ultimosPilotos = [];
+
+function acercaA(id){
+  const p = ultimosPilotos.find(x => x.id === id);
+  if (!p) return;
+  let lat = p.lat, lon = p.lon;
+  if (id === yo.id && ultimaPos){ lat = ultimaPos.lat; lon = ultimaPos.lon; }
+  if (lat == null){
+    aviso('Sin posición todavía',
+      '<b>' + (p.nombre || 'Ese piloto') + '</b> aún no ha mandado su posición.<br><br>' +
+      'En cuanto tenga un segundo de señal, aparece aquí.', 4500);
+    return;
+  }
+  if (!mapa) return;
+  mapa.setView([lat, lon], 15, { animate:true });
+  const m = marcas[id] || (id === yo.id ? marcas['__yo'] : null);
+  if (m && m.openTooltip) m.openTooltip();
+  /* y marco de cual se trata en la lista */
+  document.querySelectorAll('.pil').forEach(n => n.classList.remove('senala'));
+  const nodo = Array.from(document.querySelectorAll('.pil')).find(n => n.dataset.id === id);
+  if (nodo){
+    nodo.classList.add('senala');
+    nodo.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }
+}
+
 function pinta(todos){
+  ultimosPilotos = todos;
   $('lista').innerHTML = todos.map(p => {
     const esYo = p.id === yo.id;
     const seg = (Date.now() - (p.visto || 0)) / 1000;
@@ -410,13 +445,14 @@ function pinta(todos){
     const col = (COLORES.find(c => c.id === p.color) || {}).c || '#888';
     const alt = p.alt ? Math.round(p.alt) + ' m' : '—';
     const vel = p.vel != null ? p.vel + ' km/h' : '—';
-    return `<div class="pil ${cls}${esYo ? ' yo' : ''}">
+    return `<div class="pil ${cls}${esYo ? ' yo' : ''}" data-id="${p.id}" onclick="acercaA('${p.id}')">
       <span class="bola" style="background:${col}"></span>
       <div class="quien">
         <div class="nom">${p.nombre || '?'}${esYo ? ' (tú)' : ''}</div>
         <div class="dato">${alt} · ${vel} · ${haceCuanto(p.visto || Date.now())}</div>
       </div>
       <span class="eti">${eti}</span>
+      <span class="ir">📍</span>
     </div>`;
   }).join('') || '<div style="text-align:center;color:var(--gris);padding:20px">Esperando a los demás…</div>';
 }
