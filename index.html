@@ -55,6 +55,17 @@
   #mapa{height:46vh;min-height:270px;width:100%}
   .leaflet-container{background:#dbeef7}
 
+  /* ===== LOS DIBUJOS DE LOS PILOTOS EN EL MAPA =====
+     Volando: parapente. En tierra: persona de pie. Del color de cada uno. */
+  .pinPil svg{display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45))}
+  .pinPil{background:none;border:none}
+  /* el globito con el nombre */
+  .leaflet-tooltip{
+    background:rgba(255,255,255,.94);border:none;border-radius:8px;
+    padding:2px 8px;font-size:11.5px;font-weight:800;color:#12303d;
+    box-shadow:0 1px 5px rgba(0,0,0,.3)}
+  .leaflet-tooltip-top:before{border-top-color:rgba(255,255,255,.94)}
+
   /* ===== BOTONES DE ESTADO ===== */
   .estado{display:flex;gap:7px;padding:10px 10px 0}
   .estado button{flex:1;border:none;border-radius:11px;padding:13px 6px;font-size:12.5px;
@@ -203,7 +214,7 @@ const CLAVE = 'findwhale_yo';
 let yo = null;             /* {cod, id, nombre, color, modo} */
 let colaPuntos = [];       /* posiciones guardadas sin enviar */
 let oyente = null, mapa = null, capaLineas = null;
-let marcas = {}, lineas = {};
+let marcas = {}, lineas = {}, estadoPintado = {};
 let ultimoEnvio = 0;
 let vigiaGPS = null, ultimaPos = null;
 
@@ -358,6 +369,46 @@ function dist(la1, lo1, la2, lo2){
 setInterval(sube, 20000);
 
 /* ==========================================================================
+   LOS DIBUJOS DEL MAPA (idea de Pam)
+   Un punto no dice nada y hay que mirarlo dos veces. Mejor:
+   volando -> un parapente con el piloto colgando
+   en tierra -> una persona de pie
+   Los dos del color de cada piloto, para reconocerlos de un vistazo.
+   ========================================================================== */
+function iconoPiloto(p){
+  const col = (COLORES.find(c => c.id === p.color) || {}).c || '#888';
+  const enTierra = (p.estado === 'tierra');
+
+  /* el parapente: la vela curvada, los cabos y el piloto debajo */
+  const vela = `
+    <path d="M3 16 Q20 -1 37 16 Q28 11.5 20 11.5 Q12 11.5 3 16 Z"
+          fill="${col}" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
+    <line x1="9"  y1="14.5" x2="18" y2="25" stroke="#fff" stroke-width="1.8"/>
+    <line x1="31" y1="14.5" x2="22" y2="25" stroke="#fff" stroke-width="1.8"/>
+    <line x1="20" y1="11.5" x2="20" y2="25" stroke="#fff" stroke-width="1.8"/>
+    <circle cx="20" cy="28" r="4.6" fill="${col}" stroke="#fff" stroke-width="2.2"/>`;
+
+  /* la persona de pie: cabeza, cuerpo, brazos y piernas */
+  const persona = `
+    <circle cx="20" cy="9" r="5.6" fill="${col}" stroke="#fff" stroke-width="2.2"/>
+    <line x1="20" y1="15" x2="20" y2="26" stroke="${col}" stroke-width="5.4" stroke-linecap="round"/>
+    <line x1="20" y1="18.5" x2="12" y2="24" stroke="${col}" stroke-width="4.4" stroke-linecap="round"/>
+    <line x1="20" y1="18.5" x2="28" y2="24" stroke="${col}" stroke-width="4.4" stroke-linecap="round"/>
+    <line x1="20" y1="26" x2="14.5" y2="36" stroke="${col}" stroke-width="5" stroke-linecap="round"/>
+    <line x1="20" y1="26" x2="25.5" y2="36" stroke="${col}" stroke-width="5" stroke-linecap="round"/>
+    <line x1="20" y1="15" x2="20" y2="26" stroke="#fff" stroke-width="1.4" stroke-opacity=".35"/>
+    <circle cx="20" cy="9" r="5.6" fill="none" stroke="#fff" stroke-width="1.2" stroke-opacity=".35"/>`;
+
+  const dibujo = enTierra ? persona : vela;
+  return L.divIcon({
+    className: 'pinPil',
+    html: `<svg viewBox="0 0 40 40" width="34" height="34">${dibujo}</svg>`,
+    iconSize: [34, 34],
+    iconAnchor: [17, enTierra ? 32 : 20]
+  });
+}
+
+/* ==========================================================================
    EL MAPA (OpenStreetMap, gratis, sin llave)
    ========================================================================== */
 function creaMapa(){
@@ -371,13 +422,23 @@ function creaMapa(){
   setTimeout(() => mapa.invalidateSize(), 300);
 }
 
+let estadoYoPintado = null;
+
 function pintaMio(){
   if (!ultimaPos || !mapa) return;
-  const marca = marcas['__yo'];
-  if (!marca){
-    marcas['__yo'] = L.circleMarker([ultimaPos.lat, ultimaPos.lon],
-      { radius:9, color:'#fff', weight:3, fillColor:miColor(), fillOpacity:1 }).addTo(mapa);
-  } else marcas['__yo'].setLatLng([ultimaPos.lat, ultimaPos.lon]);
+  const datos = { color: yo.color, estado: miEstado, nombre: yo.nombre };
+  if (!marcas['__yo']){
+    marcas['__yo'] = L.marker([ultimaPos.lat, ultimaPos.lon],
+      { icon: iconoPiloto(datos), zIndexOffset: 500 }).addTo(mapa);
+    estadoYoPintado = miEstado;
+  } else {
+    marcas['__yo'].setLatLng([ultimaPos.lat, ultimaPos.lon]);
+    /* solo redibujo el dibujo si cambio mi estado (volando <-> tierra) */
+    if (estadoYoPintado !== miEstado){
+      marcas['__yo'].setIcon(iconoPiloto(datos));
+      estadoYoPintado = miEstado;
+    }
+  }
 }
 
 function miColor(){
@@ -459,17 +520,23 @@ function pinta(todos){
 
 function pintaMapa(todos){
   if (!mapa) return;
-  todos.forEach(p => {
-    if (p.id === yo.id) return;      /* el mio lo pinta el GPS */
+  todos.forEach(p => {    if (p.id === yo.id) return;      /* el mio lo pinta el GPS */
     if (p.lat == null) return;
     const col = (COLORES.find(c => c.id === p.color) || {}).c || '#888';
     coloresVistos[p.id] = col;    /* para que su rastro salga de su color */
     if (!marcas[p.id]){
-      marcas[p.id] = L.circleMarker([p.lat, p.lon],
-        { radius:9, color:'#fff', weight:3, fillColor:col, fillOpacity:1 })
-        .bindTooltip(p.nombre || '?', { permanent:true, direction:'right', offset:[10,0] })
+      marcas[p.id] = L.marker([p.lat, p.lon], { icon: iconoPiloto(p) })
+        .bindTooltip(p.nombre || '?', { permanent:true, direction:'top', offset:[0,-16] })
         .addTo(mapa);
-    } else marcas[p.id].setLatLng([p.lat, p.lon]);
+      estadoPintado[p.id] = p.estado;
+    } else {
+      marcas[p.id].setLatLng([p.lat, p.lon]);
+      /* si cambio de volando a tierra (o al reves), cambio el dibujo */
+      if (estadoPintado[p.id] !== p.estado){
+        marcas[p.id].setIcon(iconoPiloto(p));
+        estadoPintado[p.id] = p.estado;
+      }
+    }
   });
   /* encuadro a todos la primera vez */
   const pts = todos.filter(p => p.lat != null).map(p => [p.lat, p.lon]);
