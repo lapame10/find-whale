@@ -66,16 +66,25 @@
     box-shadow:0 1px 5px rgba(0,0,0,.3)}
   .leaflet-tooltip-top:before{border-top-color:rgba(255,255,255,.94)}
 
-  /* ===== LA ALARMA DE SIN CONTACTO =====
-     Si alguien lleva demasiado tiempo sin mandar punto y decia que estaba
-     volando, se avisa en rojo y grande. Sin esto el que espera abajo no sabe
-     si su amigo esta tranquilo o si ha pasado algo. */
+  /* ===== LA ALARMA: cuanto tiempo lleva sin dar señales =====
+     Pam pidio que lo diga SIEMPRE, desde el minuto 1. Asi que sube de color
+     poco a poco: al principio es normal perder señal en una ladera, y al
+     final ya no lo es. Los colores van de menos a mas. */
   #alarma:empty{display:none}
-  #alarma{background:var(--rojo);color:#fff;padding:13px 14px;margin:0;
-    font-size:14px;font-weight:700;line-height:1.45;position:relative;z-index:1300}
+  #alarma{color:#fff;padding:12px 14px;margin:0;
+    font-size:14px;font-weight:700;line-height:1.45;position:relative;z-index:1300;
+    background:#4a7c94}
   #alarma b{font-size:16px}
-  #alarma .sub{font-weight:600;font-size:12.5px;opacity:.92;margin-top:3px}
-  #alarma.aviso-suave{background:var(--naranja)}
+  #alarma .sub{font-weight:600;font-size:12.5px;opacity:.93;margin-top:3px}
+  #alarma .barraTiempo{height:4px;background:rgba(255,255,255,.28);border-radius:3px;
+    margin-top:8px;overflow:hidden}
+  #alarma .barraTiempo i{display:block;height:100%;background:#fff;border-radius:3px;
+    transition:width .5s linear}
+  /* los cuatro escalones */
+  #alarma.t1{background:#4a7c94}     /* 1-4 min  : informativo */
+  #alarma.t2{background:#c98a00}     /* 5-9 min  : ojo */
+  #alarma.t3{background:var(--naranja)}  /* 10-19    : preocupante */
+  #alarma.t4{background:var(--rojo);animation:late 1.3s ease-in-out infinite}
 
   /* ===== BOTONES DE ESTADO =====
      Dos filas: arriba el estado (volando / en tierra), abajo las llamadas
@@ -535,40 +544,68 @@ function acercaA(id){
   }
 }
 
-/* ===== LA ALARMA: ¿alguien lleva mucho sin dar señales? =====
-   OJO: perder señal es NORMAL volando (una ladera, un valle). Por eso el
-   umbral es alto. A los 10 minutos se pone en naranja (ojo), y a los 20 en
-   ROJO (puede haber pasado algo). No es un diagnostico: es una señal de que
-   hay que empezar a moverse. */
+/* ===== LA ALARMA: cuanto tiempo lleva sin dar señales =====
+   Pam pidio que lo diga SIEMPRE, desde el minuto 1 (antes solo avisaba a los
+   10). Perder señal volando es normal un rato, asi que el aviso sube de color
+   poco a poco en vez de dar el mismo grito todo el rato:
+     1-4 min  azul        normal, es una ladera
+     5-9 min  amarillo    sigue sin dar señales
+     10-19    naranja     preocúpate
+     20+      ROJO        ve a mirar
+   Asi sabes en todo momento cuanto lleva, sin alarmarte por nada.
+   ========================================================================== */
+function tiempoEnPalabras(seg){
+  if (seg < 60) return Math.floor(seg) + ' segundos';
+  const m = seg / 60;
+  if (m < 1.5) return '1 minuto';
+  return Math.floor(m) + ' minutos';
+}
+
 function pintaAlarma(todos){
   const raros = [];
   todos.forEach(p => {
     if (p.id === yo.id) return;              /* el mio no me lo aviso a mi mismo */
     const seg = (Date.now() - (p.visto || 0)) / 1000;
     const volando = (p.estado !== 'tierra' && p.estado !== 'sos');
-    if (volando && seg > 600){
-      raros.push({ n:p.nombre || '?', min: Math.floor(seg / 60), grave: seg > 1200, p:p });
+    /* desde los 45 segundos: asi un microcorte no dispara el aviso */
+    if (volando && seg >= 45){
+      raros.push({ n:p.nombre || '?', seg:seg, p:p });
     }
   });
 
   const caja = $('alarma');
-  if (!raros.length){ caja.innerHTML = ''; caja.classList.remove('aviso-suave'); return; }
+  if (!raros.length){ caja.innerHTML = ''; caja.className = ''; return; }
 
-  /* el mas grave manda */
-  raros.sort((a, b) => b.min - a.min);
+  /* el que lleva mas tiempo manda */
+  raros.sort((a, b) => b.seg - a.seg);
   const g = raros[0];
+  const mins = g.seg / 60;
   const otros = raros.length > 1 ? ' (y ' + (raros.length - 1) + ' más)' : '';
 
-  if (g.grave){
-    caja.classList.remove('aviso-suave');
-    caja.innerHTML = '🆘 <b>' + g.n + ' lleva ' + g.min + ' minutos sin dar señal' + otros + '</b>'
-      + '<div class="sub">Última posición conocida: la del mapa. '
-      + 'Puede ser una zona sin cobertura… o puede haber pasado algo. <b>Ve a mirar.</b></div>';
+  let nivel, izq, consejo;
+  if (mins >= 20){
+    nivel = 4; izq = '🆘';
+    consejo = 'Última posición conocida: la del mapa. Puede ser una zona sin cobertura… '
+            + 'o puede haber pasado algo. <b>Ve a mirar.</b>';
+  } else if (mins >= 10){
+    nivel = 3; izq = '⚠️';
+    consejo = 'Empieza a ser raro. Si conoces la zona, mira por dónde iba.';
+  } else if (mins >= 5){
+    nivel = 2; izq = '⚠️';
+    consejo = 'Sigue sin dar señales. Estate atento al móvil.';
   } else {
-    caja.classList.add('aviso-suave');
-    caja.innerHTML = '⚠️ <b>' + g.n + ' lleva ' + g.min + ' minutos sin señal' + otros + '</b>'
-      + '<div class="sub">Es normal si está en una zona sin cobertura. Si pasa de 20 minutos, preocúpate.</div>';
+    nivel = 1; izq = '📵';
+    consejo = 'Es normal: una ladera o un valle sin cobertura. Se soluciona solo.';
   }
+
+  /* la barra se llena hasta los 20 minutos */
+  const pct = Math.min(100, (g.seg / 1200) * 100);
+
+  caja.className = 't' + nivel;
+  caja.innerHTML = izq + ' <b>' + g.n + ' lleva ' + tiempoEnPalabras(g.seg)
+    + ' sin dar señal' + otros + '</b>'
+    + '<div class="sub">' + consejo + '</div>'
+    + '<div class="barraTiempo"><i style="width:' + pct.toFixed(1) + '%"></i></div>';
 }
 
 /* ==========================================================================
@@ -608,8 +645,13 @@ function pinta(todos){
     if (p.estado === 'sos'){ cls = 'sos'; eti = '🆘 AYUDA'; }
     else if (p.estado === 'retrieval'){ cls = 'recoge'; eti = '🚗 RECÓGEME'; }
     else if (p.estado === 'tierra'){ cls = 'aterrizo'; eti = 'EN TIERRA'; }
-    else if (seg > 600){ cls = 'mudo'; eti = '⚠ SIN SEÑAL'; }
-    else if (seg > 180){ cls = 'mudo'; eti = 'HACE ' + Math.floor(seg/60) + ' MIN'; }
+    /* en vuelo, enseño SIEMPRE cuanto lleva sin dar señal (desde el minuto 1) */
+    else if (seg >= 45){
+      cls = 'mudo';
+      const m = Math.floor(seg / 60);
+      eti = seg < 60 ? '📵 ' + Math.floor(seg) + 's'
+                     : (m >= 20 ? '🔴 ' + m + ' MIN SIN SEÑAL' : '⚠️ ' + m + ' MIN SIN SEÑAL');
+    }
     const col = (COLORES.find(c => c.id === p.color) || {}).c || '#888';
     const alt = p.alt ? Math.round(p.alt) + ' m' : '—';
     const vel = p.vel != null ? p.vel + ' km/h' : '—';
@@ -807,9 +849,9 @@ async function arranca(comparte){
   sube();
   setInterval(pintaRastro, 60000);
   setInterval(() => { if (enCola()) sube(); }, 20000);
-  /* la alarma y los "hace X minutos" tienen que refrescarse SOLOS, aunque
-     nadie mande nada nuevo. Si no, la alarma no apareceria nunca. */
-  setInterval(() => { if (ultimosPilotos.length) pinta(ultimosPilotos); }, 60000);
+  /* la alarma y los "hace X" se refrescan SOLOS, aunque nadie mande nada
+     nuevo. Cada 20 segundos para que el contador se mueva a la vista. */
+  setInterval(() => { if (ultimosPilotos.length) pinta(ultimosPilotos); }, 20000);
 }
 
 /* ==========================================================================

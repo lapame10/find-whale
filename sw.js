@@ -6,7 +6,7 @@
    Guarda una copia de la app y de las librerias (mapa) en el telefono.
    ========================================================================== */
 
-const CACHE = 'findwhale-v6';
+const CACHE = 'findwhale-v7';
 const ESENCIAL = [
   './',
   './index.html',
