@@ -1,0 +1,15 @@
+{
+  "name": "Find Whale — baliza de vuelo",
+  "short_name": "Find Whale",
+  "description": "Sigue a tus amigos en vuelo en tiempo real. Funciona sin red.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eaf6fb",
+  "theme_color": "#0a4d68",
+  "icons": [
+    { "src": "icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

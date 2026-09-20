@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a4d68">
+<title>Find Whale — baliza de vuelo</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{
+    --mar:#0a4d68; --mar2:#0e6b8f; --cielo:#eaf6fb; --arena:#f7f3ea;
+    --tinta:#12303d; --gris:#6b7f88; --verde:#1f9d55; --rojo:#c62828;
+    --naranja:#e07b00; --sombra:0 2px 8px rgba(10,40,60,.18);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:var(--cielo);color:var(--tinta);
+    padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+  .pant{display:none}.pant.on{display:block}
+
+  /* ===== PORTADA ===== */
+  #p1{padding:26px 20px;max-width:460px;margin:0 auto}
+  .logo{text-align:center;margin-bottom:22px}
+  .ballena{font-size:56px;line-height:1}
+  h1{font-size:30px;margin:6px 0 2px;letter-spacing:-.5px;color:var(--mar)}
+  .sub{font-size:13px;color:var(--gris);letter-spacing:2px;text-transform:uppercase}
+  .tarjeta{background:#fff;border-radius:16px;padding:18px;box-shadow:var(--sombra);margin-bottom:14px}
+  label{display:block;font-size:12px;font-weight:700;color:var(--gris);
+    text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+  input{width:100%;font-size:19px;padding:14px;border:2px solid #cfe3ec;border-radius:11px;
+    background:var(--arena);color:var(--tinta);font-weight:700}
+  input:focus{outline:none;border-color:var(--mar2)}
+  .btn{width:100%;border:none;border-radius:12px;padding:17px;font-size:17px;font-weight:800;
+    cursor:pointer;margin-top:12px;background:var(--mar);color:#fff;box-shadow:0 3px 0 #063243}
+  .btn:active{transform:translateY(2px);box-shadow:0 1px 0 #063243}
+  .btn.claro{background:#fff;color:var(--mar);border:2px solid var(--mar);box-shadow:0 3px 0 #b9d6e2}
+  .btn.grande{font-size:20px;padding:22px}
+  .err{color:var(--rojo);font-size:13px;margin-top:8px;font-weight:700;min-height:18px}
+  .colores{display:flex;gap:7px;flex-wrap:wrap;margin-top:4px}
+  .colores span{width:36px;height:36px;border-radius:50%;cursor:pointer;
+    box-shadow:0 0 0 3px #fff,0 0 0 4.5px transparent}
+  .colores span.on{box-shadow:0 0 0 3px #fff,0 0 0 5.5px var(--tinta)}
+
+  /* ===== BARRA SUPERIOR ===== */
+  .barra{background:var(--mar);color:#fff;padding:9px 12px;display:flex;
+    align-items:center;gap:8px;position:sticky;top:0;z-index:1200}
+  .codigo{font-size:21px;font-weight:900;letter-spacing:5px}
+  .barra .yo{margin-left:auto;font-size:11px;text-align:right;line-height:1.3;opacity:.95}
+  .punto{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px}
+  .punto.on{background:#5be07a}.punto.off{background:#ff6b6b}
+
+  /* ===== MAPA ===== */
+  #mapa{height:46vh;min-height:270px;width:100%}
+  .leaflet-container{background:#dbeef7}
+
+  /* ===== BOTONES DE ESTADO ===== */
+  .estado{display:flex;gap:7px;padding:10px 10px 0}
+  .estado button{flex:1;border:none;border-radius:11px;padding:13px 6px;font-size:12.5px;
+    font-weight:800;cursor:pointer;background:#fff;color:var(--tinta);
+    box-shadow:var(--sombra);border-bottom:3px solid #d8e6ec;line-height:1.3}
+  .estado button.on{background:var(--verde);color:#fff;border-bottom-color:#12693a}
+  .estado button.sos{background:#fff;color:var(--rojo)}
+  .estado button.sos.on{background:var(--rojo);color:#fff}
+  .estado button small{display:block;font-size:9.5px;font-weight:600;opacity:.75}
+
+  /* ===== LISTA DE PILOTOS ===== */
+  .lista{padding:12px 10px 90px}
+  .pil{background:#fff;border-radius:13px;padding:11px 13px;margin-bottom:8px;
+    display:flex;align-items:center;gap:11px;box-shadow:var(--sombra);
+    border-left:6px solid #ccc}
+  .pil .bola{width:15px;height:15px;border-radius:50%;flex:0 0 auto}
+  .pil .quien{flex:1;min-width:0}
+  .pil .nom{font-weight:800;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pil .dato{font-size:11.5px;color:var(--gris);margin-top:2px}
+  .pil .eti{font-size:10.5px;font-weight:800;padding:4px 8px;border-radius:20px;
+    background:#eef4f7;color:var(--gris);white-space:nowrap}
+  .pil.vuela{border-left-color:var(--verde)}
+  .pil.vuela .eti{background:#e3f7e9;color:#12693a}
+  .pil.aterrizo{border-left-color:var(--mar2)}
+  .pil.aterrizo .eti{background:#e2f1f9;color:var(--mar)}
+  .pil.mudo{border-left-color:var(--naranja)}
+  .pil.mudo .eti{background:#fdf1e0;color:#8a4d00}
+  .pil.sos{border-left-color:var(--rojo);background:#fff5f5}
+  .pil.sos .eti{background:#fde3e3;color:var(--rojo)}
+  .pil.yo{box-shadow:var(--sombra),0 0 0 2px var(--mar2)}
+
+  .pie{text-align:center;font-size:10.5px;color:var(--gris);padding:0 16px 30px;line-height:1.6}
+  .salir{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);
+    background:#fff;color:var(--rojo);border:2px solid var(--rojo);border-radius:11px;
+    padding:11px 22px;font-weight:800;font-size:13px;cursor:pointer;box-shadow:var(--sombra);z-index:1100}
+
+  /* ===== AVISO ===== */
+  .aviso{position:fixed;inset:0;background:rgba(10,40,60,.72);display:none;
+    align-items:center;justify-content:center;z-index:3000;padding:26px}
+  .aviso.on{display:flex}
+  .aviso .caja{background:#fff;border-radius:16px;padding:22px 18px;max-width:320px;width:100%;
+    text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.4)}
+  .aviso .t{font-size:19px;font-weight:900;color:var(--mar);margin-bottom:6px}
+  .aviso .d{font-size:14px;line-height:1.55;color:var(--tinta)}
+  .aviso .x{margin-top:16px}
+</style>
+</head>
+<body>
+
+<!-- ===== PORTADA ===== -->
+<div class="pant on" id="p1">
+  <div class="logo">
+    <div class="ballena">🐳</div>
+    <h1>Find Whale</h1>
+    <div class="sub">baliza de vuelo</div>
+  </div>
+
+  <div class="tarjeta">
+    <label>Tu nombre</label>
+    <input id="miNombre" placeholder="Pame" maxlength="14" autocomplete="off">
+    <label style="margin-top:14px">Tu color</label>
+    <div class="colores" id="misColores"></div>
+  </div>
+
+  <div class="tarjeta">
+    <label>¿Qué vas a hacer?</label>
+    <button class="btn grande" id="bVolar">🪂 VOY A VOLAR</button>
+    <button class="btn claro grande" id="bSeguir">👀 VOY A SEGUIR A ALGUIEN</button>
+    <div class="err" id="e1"></div>
+  </div>
+
+  <div class="tarjeta">
+    <label>Código de la sala</label>
+    <input id="miCodigo" placeholder="FLY1" maxlength="4" autocapitalize="characters"
+           style="text-transform:uppercase;letter-spacing:6px;text-align:center">
+    <button class="btn claro" id="bUnir">ENTRAR A ESA SALA</button>
+    <div style="font-size:11.5px;color:var(--gris);margin-top:10px;line-height:1.5">
+      Si vuelas tú, te damos un código nuevo. Si sigues a alguien, escribe su código.
+    </div>
+  </div>
+
+  <div class="pie">
+    El GPS funciona <b>sin internet</b>. Las posiciones se guardan en tu teléfono
+    y se envían solas en cuanto recuperas señal. <b>No se pierde nada.</b>
+  </div>
+</div>
+
+<!-- ===== LA APP ===== -->
+<div class="pant" id="p2">
+  <div class="barra">
+    <div class="codigo" id="codigo">----</div>
+    <div class="yo">
+      <span class="punto on" id="puntoRed"></span><span id="txtRed">en línea</span><br>
+      <span id="txtModo"></span>
+    </div>
+  </div>
+
+  <div id="mapa"></div>
+
+  <div class="estado" id="estado">
+    <button id="bVuelo">🟢 <span>VOLANDO</span><small>tocando aquí</small></button>
+    <button id="bTierra">🔵 <span>EN TIERRA</span><small>aterrizado y bien</small></button>
+    <button id="bSos" class="sos">🆘 <span>AYUDA</span><small>manda alerta</small></button>
+  </div>
+
+  <div class="lista" id="lista"></div>
+
+  <div style="text-align:center;padding:0 14px 20px;font-size:11.5px;color:var(--gris);line-height:1.6">
+    <b id="txtCola">0</b> posiciones guardadas sin enviar ·
+    última subida <b id="txtSubida">—</b>
+  </div>
+
+  <button class="salir" id="bSalir">🚪 SALIR</button>
+</div>
+
+<div class="aviso" id="aviso">
+  <div class="caja">
+    <div class="t" id="avT">🐳 Find Whale</div>
+    <div class="d" id="avD"></div>
+    <button class="btn x" id="avX">ENTENDIDO</button>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ==========================================================================
+   FIND WHALE — baliza de vuelo para parapente
+   --------------------------------------------------------------------------
+   La idea: en el aire NO hay internet. Las apps caras lo resuelven con radio
+   o satelite. Nosotros lo resolvemos guardando las posiciones EN EL TELEFONO
+   y mandandolas todas juntas en cuanto hay un segundo de red.
+   Como mandar postales: si no hay buzon, las guardas en el bolsillo.
+   ========================================================================== */
+
+const FIRE = 'https://plan-gym-8aff7-default-rtdb.firebaseio.com';
+const $ = id => document.getElementById(id);
+const CLAVE = 'findwhale_yo';
+
+let yo = null;             /* {cod, id, nombre, color, modo} */
+let colaPuntos = [];       /* posiciones guardadas sin enviar */
+let oyente = null, mapa = null, capaLineas = null;
+let marcas = {}, lineas = {};
+let ultimoEnvio = 0;
+let vigiaGPS = null, ultimaPos = null;
+
+const COLORES = [
+  { id:'rojo',    c:'#e53935' }, { id:'azul',   c:'#1e88e5' },
+  { id:'verde',   c:'#43a047' }, { id:'naranja',c:'#fb8c00' },
+  { id:'morado',  c:'#8e24aa' }, { id:'celeste',c:'#00acc1' },
+];
+
+/* ---------- utilidades ---------- */
+function aviso(t, d, ms){
+  $('avT').innerHTML = t; $('avD').innerHTML = d;
+  $('aviso').classList.add('on');
+  if (ms) setTimeout(() => $('aviso').classList.remove('on'), ms);
+}
+$('avX').onclick = () => $('aviso').classList.remove('on');
+
+function pant(id){
+  document.querySelectorAll('.pant').forEach(p => p.classList.toggle('on', p.id === id));
+}
+function fmtHora(t){ return new Date(t).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}); }
+function haceCuanto(t){
+  const s = Math.floor((Date.now() - t) / 1000);
+  if (s < 60) return 'ahora';
+  const m = Math.floor(s / 60);
+  if (m < 60) return 'hace ' + m + ' min';
+  const h = Math.floor(m / 60);
+  return 'hace ' + h + ' h ' + (m % 60) + ' min';
+}
+function codigoAleatorio(){
+  const letras = 'ABCDEFGHJKLMNPQRSTUVWXYZ';   /* sin I ni O: se confunden al dictar */
+  let out = '';
+  for (let i = 0; i < 4; i++) out += letras[Math.floor(Math.random() * letras.length)];
+  return out;
+}
+
+/* guardo quien soy para no perderlo al recargar */
+function guarda(obj){ try{ localStorage.setItem(CLAVE, JSON.stringify(obj)); }catch(e){} }
+function lee(){ try{ return JSON.parse(localStorage.getItem(CLAVE) || 'null'); }catch(e){ return null; } }
+
+/* ==========================================================================
+   LA COLA: aqui esta todo el truco
+   Cada posicion se guarda en el telefono. Si no hay red, se acumulan.
+   Cuando hay red, se mandan TODAS juntas. Nunca se pierde ninguna.
+   ========================================================================== */
+function guardaEnCola(p){
+  colaPuntos.push(p);
+  /* no dejo que crezca sin limite: guardo 12 h de vuelo como mucho */
+  if (colaPuntos.length > 3000) colaPuntos = colaPuntos.slice(-3000);
+  try{ localStorage.setItem('findwhale_cola', JSON.stringify(colaPuntos)); }catch(e){}
+  $('txtCola').textContent = colaPuntos.length;
+}
+function cargaCola(){
+  try{ colaPuntos = JSON.parse(localStorage.getItem('findwhale_cola') || '[]'); }catch(e){ colaPuntos = []; }
+  $('txtCola').textContent = colaPuntos.length;
+}
+function enCola(){ return colaPuntos.length > 0; }
+
+/* manda la cola entera de una vez */
+async function sube(){
+  if (!yo || !enCola()) return;
+  if (!navigator.onLine) { pintaRed(false); return; }
+  const lote = colaPuntos.slice();
+  const txt = lote.map(p => `${p.lat.toFixed(5)},${p.lon.toFixed(5)},${Math.round(p.alt||0)},${p.t}`).join('|');
+  try{
+    const r = await fetch(`${FIRE}/findwhale/rastro/${yo.cod}/${yo.id}.json`,
+      { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(txt) });
+    if (!r.ok) throw new Error('http ' + r.status);
+    /* solo borro lo que acabo de enviar */
+    colaPuntos = colaPuntos.slice(lote.length);
+    try{ localStorage.setItem('findwhale_cola', JSON.stringify(colaPuntos)); }catch(e){}
+    $('txtCola').textContent = colaPuntos.length;
+    $('txtSubida').textContent = fmtHora(Date.now());
+    ultimoEnvio = Date.now();
+    pintaRed(true);
+  }catch(e){
+    pintaRed(false);
+  }
+}
+
+async function late(datos){
+  if (!yo) return;
+  try{
+    await fetch(`${FIRE}/findwhale/pilotos/${yo.cod}/${yo.id}.json`,
+      { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(datos) });
+    pintaRed(true);
+  }catch(e){ pintaRed(false); }
+}
+
+function pintaRed(ok){
+  $('puntoRed').className = 'punto ' + (ok ? 'on' : 'off');
+  $('txtRed').textContent = ok ? 'en línea' : 'sin red (guardando)';
+}
+window.addEventListener('online', () => { pintaRed(true); sube(); });
+window.addEventListener('offline', () => pintaRed(false));
+
+/* ==========================================================================
+   EL GPS — funciona sin internet (es satelite, no datos)
+   ========================================================================== */
+let velActual = 0, ultimaVezMovio = Date.now(), quietoDesde = null;
+
+function arrancaGPS(){
+  if (!navigator.geolocation){ aviso('Sin GPS','Tu navegador no deja usar la ubicación.'); return; }
+  if (vigiaGPS) navigator.geolocation.clearWatch(vigiaGPS);
+  vigiaGPS = navigator.geolocation.watchPosition(pos => {
+    const c = pos.coords;
+    const t = Date.now();
+    const p = { lat:c.latitude, lon:c.longitude, alt:c.altitude, t:t, vel:c.speed };
+
+    /* velocidad: la del GPS o la calculo yo */
+    if (c.speed != null && !isNaN(c.speed)) velActual = c.speed * 3.6;
+    else if (ultimaPos){
+      const d = dist(ultimaPos.lat, ultimaPos.lon, p.lat, p.lon);
+      const dt = (t - ultimaPos.t) / 1000;
+      if (dt > 0) velActual = (d / dt) * 3.6;
+    }
+    ultimaPos = p;
+
+    guardaEnCola(p);
+    /* si voy rapido, estoy volando */
+    if (velActual > 8) { quietoDesde = null; ultimaVezMovio = t; }
+
+    /* aterrizaje automatico: si llevo 2 min por debajo de 3 km/h y estoy en el aire */
+    if (yo && yo.modo === 'volar'){
+      if (velActual < 3){
+        if (!quietoDesde) quietoDesde = t;
+        else if (t - quietoDesde > 120000 && miEstado !== 'tierra'){
+          ponEstado('tierra', true);
+        }
+      } else quietoDesde = null;
+    }
+
+    late({
+      nombre: yo.nombre, color: yo.color, modo: yo.modo,
+      estado: miEstado, lat:p.lat, lon:p.lon, alt:p.alt, vel:Math.round(velActual),
+      visto: t, subido: ultimoEnvio || t
+    });
+    pintaMio();
+  }, err => {
+    if (err.code === 1) aviso('Necesito el GPS','Dale permiso de ubicación a Find Whale. Sin eso no puedo verte en el mapa.');
+  }, { enableHighAccuracy:true, maximumAge:2000, timeout:20000 });
+}
+
+function dist(la1, lo1, la2, lo2){
+  const R = 6371000, r = Math.PI / 180;
+  const dla = (la2-la1)*r, dlo = (lo2-lo1)*r;
+  const a = Math.sin(dla/2)**2 + Math.cos(la1*r)*Math.cos(la2*r)*Math.sin(dlo/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+/* cada 20 s intento subir lo que haya en la cola */
+setInterval(sube, 20000);
+
+/* ==========================================================================
+   EL MAPA (OpenStreetMap, gratis, sin llave)
+   ========================================================================== */
+function creaMapa(){
+  if (mapa) return;
+  mapa = L.map('mapa', { zoomControl:true, attributionControl:false }).setView([19.06, -100.09], 12);
+  /* mapa de montaña: con curvas de nivel, mucho mejor para volar */
+  L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom:16 }).addTo(mapa);
+  L.control.attribution({ position:'bottomright', prefix:false })
+    .addAttribution('OpenTopoMap · OpenStreetMap').addTo(mapa);
+  capaLineas = L.layerGroup().addTo(mapa);
+  setTimeout(() => mapa.invalidateSize(), 300);
+}
+
+function pintaMio(){
+  if (!ultimaPos || !mapa) return;
+  const marca = marcas['__yo'];
+  if (!marca){
+    marcas['__yo'] = L.circleMarker([ultimaPos.lat, ultimaPos.lon],
+      { radius:9, color:'#fff', weight:3, fillColor:miColor(), fillOpacity:1 }).addTo(mapa);
+  } else marcas['__yo'].setLatLng([ultimaPos.lat, ultimaPos.lon]);
+}
+
+function miColor(){
+  const c = COLORES.find(x => x.id === (yo && yo.color));
+  return c ? c.c : '#e53935';
+}
+
+/* ==========================================================================
+   PINTAR LA LISTA DE PILOTOS Y SUS LINEAS EN EL MAPA
+   ========================================================================== */
+let miEstado = 'vuelo';
+
+function escuchar(cod){
+  if (oyente) oyente.off();
+  const db = firebase.database();
+  oyente = db.ref('findwhale/pilotos/' + cod);
+  oyente.on('value', snap => {
+    const s = snap.val() || {};
+    const todos = Object.entries(s).map(([id, p]) => Object.assign({ id }, p));
+    todos.sort((a, b) => (a.id === yo.id ? -1 : b.id === yo.id ? 1 : 0));
+    pinta(todos);
+    pintaMapa(todos);
+  });
+}
+
+function pinta(todos){
+  $('lista').innerHTML = todos.map(p => {
+    const esYo = p.id === yo.id;
+    const seg = (Date.now() - (p.visto || 0)) / 1000;
+    let cls = 'vuela', eti = 'VOLANDO';
+    if (p.estado === 'sos'){ cls = 'sos'; eti = '🆘 AYUDA'; }
+    else if (p.estado === 'tierra'){ cls = 'aterrizo'; eti = 'EN TIERRA'; }
+    else if (seg > 600){ cls = 'mudo'; eti = '⚠ SIN SEÑAL'; }
+    else if (seg > 180){ cls = 'mudo'; eti = 'HACE ' + Math.floor(seg/60) + ' MIN'; }
+    const col = (COLORES.find(c => c.id === p.color) || {}).c || '#888';
+    const alt = p.alt ? Math.round(p.alt) + ' m' : '—';
+    const vel = p.vel != null ? p.vel + ' km/h' : '—';
+    return `<div class="pil ${cls}${esYo ? ' yo' : ''}">
+      <span class="bola" style="background:${col}"></span>
+      <div class="quien">
+        <div class="nom">${p.nombre || '?'}${esYo ? ' (tú)' : ''}</div>
+        <div class="dato">${alt} · ${vel} · ${haceCuanto(p.visto || Date.now())}</div>
+      </div>
+      <span class="eti">${eti}</span>
+    </div>`;
+  }).join('') || '<div style="text-align:center;color:var(--gris);padding:20px">Esperando a los demás…</div>';
+}
+
+function pintaMapa(todos){
+  if (!mapa) return;
+  todos.forEach(p => {
+    if (p.id === yo.id) return;      /* el mio lo pinta el GPS */
+    if (p.lat == null) return;
+    const col = (COLORES.find(c => c.id === p.color) || {}).c || '#888';
+    coloresVistos[p.id] = col;    /* para que su rastro salga de su color */
+    if (!marcas[p.id]){
+      marcas[p.id] = L.circleMarker([p.lat, p.lon],
+        { radius:9, color:'#fff', weight:3, fillColor:col, fillOpacity:1 })
+        .bindTooltip(p.nombre || '?', { permanent:true, direction:'right', offset:[10,0] })
+        .addTo(mapa);
+    } else marcas[p.id].setLatLng([p.lat, p.lon]);
+  });
+  /* encuadro a todos la primera vez */
+  const pts = todos.filter(p => p.lat != null).map(p => [p.lat, p.lon]);
+  if (ultimaPos) pts.push([ultimaPos.lat, ultimaPos.lon]);
+  if (pts.length > 1 && !mapa._encuadrado){
+    mapa.fitBounds(pts, { padding:[40,40], maxZoom:14 });
+    mapa._encuadrado = true;
+  }
+}
+
+/* pinto el rastro completo (las lineas del vuelo) */
+let coloresVistos = {};   /* id -> color, para pintar la linea del color del piloto */
+async function pintaRastro(cod){
+  try{
+    const r = await fetch(`${FIRE}/findwhale/rastro/${cod}.json`);
+    const d = await r.json() || {};
+    Object.entries(d).forEach(([id, txt]) => {
+      const pts = String(txt).split('|').filter(Boolean).map(x => {
+        const [lat, lon, alt, t] = x.split(',');
+        return [+lat, +lon, +alt, +t];
+      }).filter(p => !isNaN(p[0]));
+      if (pts.length < 2) return;
+      const col = coloresVistos[id] || '#e53935';
+      if (lineas[id]) capaLineas.removeLayer(lineas[id]);
+      lineas[id] = L.polyline(pts.map(p => [p[0], p[1]]),
+        { color:col, weight:3, opacity:.75 }).addTo(capaLineas);
+    });
+  }catch(e){}
+}
+
+/* ==========================================================================
+   LOS BOTONES DE ESTADO
+   ========================================================================== */
+function ponEstado(nuevo, automatico){
+  miEstado = nuevo;
+  ['vuelo','tierra'].forEach(k => $('b' + (k === 'vuelo' ? 'Vuelo' : 'Tierra')).classList.toggle('on', k === nuevo));
+  $('bSos').classList.toggle('on', nuevo === 'sos');
+  late({ nombre:yo.nombre, color:yo.color, modo:yo.modo, estado:nuevo,
+         lat:(ultimaPos||{}).lat, lon:(ultimaPos||{}).lon, alt:(ultimaPos||{}).alt,
+         vel:Math.round(velActual), visto:Date.now(), subido:ultimoEnvio||Date.now() });
+  if (automatico && nuevo === 'tierra'){
+    aviso('🔵 Aterrizaje detectado',
+      'Llevas 2 minutos parado. He puesto tu estado en <b>EN TIERRA</b>.<br><br>' +
+      'Si sigues volando, toca <b>VOLANDO</b>.', 7000);
+  }
+}
+$('bVuelo').onclick = () => ponEstado('vuelo');
+$('bTierra').onclick = () => ponEstado('tierra');
+$('bSos').onclick = () => {
+  if (miEstado === 'sos'){ ponEstado('vuelo'); return; }
+  ponEstado('sos');
+  aviso('🆘 ALERTA MANDADA',
+    'Los que te siguen ven <b>AYUDA</b> en rojo y tu última posición.<br><br>' +
+    'Tócalo otra vez para quitarlo.', 8000);
+};
+
+/* ==========================================================================
+   ENTRAR
+   ========================================================================== */
+function pintaColores(){
+  $('misColores').innerHTML = COLORES.map((c, i) =>
+    `<span data-col="${c.id}" style="background:${c.c}" class="${i === 0 ? 'on' : ''}"></span>`).join('');
+  $('misColores').onclick = e => {
+    if (!e.target.dataset.col) return;
+    document.querySelectorAll('#misColores span').forEach(s => s.classList.remove('on'));
+    e.target.classList.add('on');
+  };
+}
+function colorElegido(){
+  const on = document.querySelector('#misColores span.on');
+  return on ? on.dataset.col : 'rojo';
+}
+
+async function entra(modo, codPedido){
+  const nombre = ($('miNombre').value || '').trim();
+  if (!nombre){ $('e1').textContent = 'Escribe tu nombre primero.'; return; }
+  const cod = modo === 'volar' ? (codPedido || codigoAleatorio()) : (codPedido || '').toUpperCase().trim();
+  if (modo === 'seguir' && cod.length !== 4){ $('e1').textContent = 'El código son 4 letras.'; return; }
+
+  const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  yo = { cod:cod, id:id, nombre:nombre, color:colorElegido(), modo:modo };
+  miEstado = 'vuelo';
+  guarda(yo);
+  arranca(modo === 'volar');
+}
+
+async function arranca(comparte){
+  pant('p2');
+  $('codigo').textContent = yo.cod;
+  $('txtModo').innerHTML = yo.modo === 'volar' ? '🪂 volando' : '👀 siguiendo';
+  document.querySelector('.estado').style.display = comparte ? 'flex' : 'none';
+  $('bSalir').textContent = yo.modo === 'volar' ? '🚪 SALIR Y DEJAR DE COMPARTIR' : '🚪 SALIR';
+  creaMapa();
+  cargaCola();
+  escuchar(yo.cod);
+  if (comparte){
+    arrancaGPS();
+    await late({ nombre:yo.nombre, color:yo.color, modo:'volar', estado:'vuelo',
+                 visto:Date.now(), subido:Date.now() });
+  }
+  sube();
+  setInterval(pintaRastro, 60000);
+  setInterval(() => { if (enCola()) sube(); }, 20000);
+}
+
+/* ==========================================================================
+   ARRANQUE
+   ========================================================================== */
+firebase.initializeApp({ databaseURL: FIRE + '/' });
+pintaColores();
+pintaRed(navigator.onLine);
+
+$('bVolar').onclick = () => entra('volar');
+$('bSeguir').onclick = () => {
+  const cod = ($('miCodigo').value || '').toUpperCase().trim();
+  entra('seguir', cod);
+};
+$('bUnir').onclick = () => {
+  const cod = ($('miCodigo').value || '').toUpperCase().trim();
+  if (cod.length !== 4){ $('e1').textContent = 'Escribe las 4 letras del código.'; return; }
+  entra('seguir', cod);
+};
+$('bSalir').onclick = async () => {
+  if (vigiaGPS && navigator.geolocation) navigator.geolocation.clearWatch(vigiaGPS);
+  if (yo) await sube();
+  if (yo) { try{ await fetch(`${FIRE}/findwhale/pilotos/${yo.cod}/${yo.id}.json`, { method:'DELETE' }); }catch(e){} }
+  try{ localStorage.removeItem(CLAVE); }catch(e){}
+  location.reload();
+};
+
+/* si ya estaba dentro, vuelvo a entrar solo */
+(function(){
+  const prev = lee();
+  if (prev && prev.cod){
+    $('miNombre').value = prev.nombre || '';
+    yo = prev; miEstado = 'vuelo';
+    arranca(prev.modo === 'volar');
+  }
+})();
+
+/* ===== EL SERVICE WORKER =====
+   Es lo que hace que la app ABRA SIN RED. Si estas en la ladera sin cobertura
+   y la abres, tiene que arrancar igual. */
+if ('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
