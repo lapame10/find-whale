@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#071621">
+<title>Find Whale Live</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--bg:#071621;--card:#0d2432;--ink:#eff8fb;--muted:#8fb0bf;--line:#1d4355;--cyan:#38c8e8;--green:#48d783;--blue:#55a7ff;--amber:#ffc857;--red:#ff5f6d}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input,select{font:inherit}.hidden{display:none!important}.shell{max-width:620px;margin:auto;padding:16px 12px 70px}.top{display:flex;align-items:center;gap:10px;margin-bottom:14px}.logo{width:44px;height:44px;border-radius:14px;background:#12384a;display:grid;place-items:center;font-size:24px}.brand h1{margin:0;font-size:22px}.brand small{font-size:10px;color:var(--muted);letter-spacing:1.6px}.net{margin-left:auto;font-size:11px;color:var(--muted);border:1px solid var(--line);padding:6px 9px;border-radius:999px}.net.on{color:var(--green)}.net.off{color:var(--amber)}
+.card{background:linear-gradient(#0d2432,#0a1e29);border:1px solid var(--line);border-radius:18px;padding:15px;margin-bottom:11px}.k{font-size:10px;color:var(--cyan);font-weight:800;letter-spacing:1.5px}.ttl{font-size:22px;font-weight:800;margin:4px 0}.muted{font-size:12px;line-height:1.45;color:var(--muted)}label{display:block;font-size:10px;color:var(--muted);font-weight:800;letter-spacing:.7px;margin:13px 0 5px;text-transform:uppercase}input,select{width:100%;background:#071a24;color:var(--ink);border:1px solid var(--line);border-radius:11px;padding:12px;outline:none}.row{display:flex;gap:8px;align-items:center}.spread{justify-content:space-between}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.btn{border:1px solid var(--line);background:#123347;color:var(--ink);border-radius:11px;padding:12px;font-weight:800}.btn.primary{background:var(--cyan);color:#03202b;border-color:transparent}.btn.safe{background:#143c2b;color:#c8f3d6}.btn.danger{background:#4a1b26;color:#ffdbe0}.btn.sm{padding:8px 10px;font-size:11px}.code{font-size:26px;font-weight:900;letter-spacing:3px}.pill{font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:6px 8px}
+#map{height:46vh;min-height:315px;border-radius:15px;margin-top:10px}.leaflet-control-attribution{font-size:8px!important}.list{display:grid;gap:7px;margin-top:10px}.pilot{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;border:1px solid var(--line);background:#091c27;border-radius:13px;padding:10px}.pilot.me{outline:1px solid var(--cyan)}.av{width:34px;height:34px;border-radius:50%;background:#173b4d;display:grid;place-items:center}.pn{font-weight:800;font-size:14px}.pi{font-size:10.5px;color:var(--muted);margin-top:2px}.st{font-size:9.5px;font-weight:900;text-align:right}.good{color:var(--green)}.warn{color:var(--amber)}.bad{color:var(--red)}.ground{color:var(--blue)}
+.devices{display:grid;gap:7px;margin-top:10px}.device{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;border:1px solid var(--line);background:#091c27;border-radius:12px;padding:10px}.di{font-size:20px}.dt{font-size:12px;font-weight:800}.ds{font-size:10px;color:var(--muted)}.tag{font-size:9px;color:var(--cyan);border:1px solid #235568;border-radius:999px;padding:4px 6px}.warnbox{margin-top:10px;border-left:3px solid var(--amber);background:#ffc85712;padding:9px 10px;border-radius:9px;font-size:11px;color:#ecdba8;line-height:1.4}.controls{position:sticky;bottom:8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;background:#071621e8;backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:15px;padding:8px;z-index:900}.controls .btn{padding:10px 5px;font-size:10px}
+.sheet{position:fixed;inset:0;background:#0009;z-index:2000;display:flex;align-items:flex-end;padding:12px}.box{width:min(620px,100%);margin:auto;background:#0b2130;border:1px solid var(--line);border-radius:20px;padding:16px}.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:11px}.tab{border:1px solid var(--line);background:#091c27;color:var(--muted);border-radius:10px;padding:9px 5px}.tab.on{border-color:var(--cyan);color:var(--ink)}.toast{position:fixed;bottom:24px;left:50%;transform:translate(-50%,15px);background:white;color:#08202b;padding:9px 12px;border-radius:999px;font-size:11px;font-weight:800;opacity:0;transition:.2s;z-index:3000}.toast.on{opacity:1;transform:translate(-50%,0)}
+@media(max-width:420px){.grid{grid-template-columns:1fr}#map{height:43vh;min-height:290px}}
+</style>
+</head>
+<body>
+<div class="shell">
+<header class="top"><div class="logo">🐳</div><div class="brand"><h1>Find Whale</h1><small>LIVE FLIGHT NETWORK</small></div><div id="net" class="net">● red</div></header>
+
+<section id="home" class="card">
+<div class="k">GRUPO DE VUELO</div><div class="ttl">Todos en el mismo mapa.</div>
+<div class="muted">Crea una sala y comparte el código. Pilotos, retrieval y observadores entran al mismo vuelo.</div>
+<label>Tu nombre</label><input id="name" placeholder="Pame" maxlength="24">
+<label>Tu rol</label><select id="role"><option value="pilot">🪂 Piloto</option><option value="retrieval">🚗 Retrieval</option><option value="watcher">👀 Solo mirar</option></select>
+<div class="grid" style="margin-top:13px"><button id="create" class="btn primary">Crear vuelo</button><button id="showJoin" class="btn">Entrar con código</button></div>
+<div id="joinBox" class="hidden"><label>Código</label><div class="row"><input id="joinCode" placeholder="ABC234" maxlength="8" style="text-transform:uppercase"><button id="join" class="btn">Entrar</button></div></div>
+</section>
+
+<section id="session" class="hidden">
+<div class="card">
+<div class="row spread"><div><div class="k">VUELO ACTIVO</div><div class="ttl" style="font-size:18px">Find Whale Live</div></div><button id="leave" class="btn sm">Salir</button></div>
+<div class="row spread"><div id="roomCode" class="code">—</div><div class="row"><button id="copy" class="btn sm">Copiar</button><button id="share" class="btn sm">Compartir</button></div></div>
+<div class="row" style="margin-top:9px;flex-wrap:wrap"><span id="rolePill" class="pill">—</span><span id="sourcePill" class="pill">📱 teléfono</span><span id="agePill" class="pill">sin posición</span></div>
+</div>
+
+<div class="card">
+<div class="row spread"><div><div class="k">MAPA</div><div class="ttl" style="font-size:18px">Situación del grupo</div></div><button id="fit" class="btn sm">Ver todos</button></div>
+<div id="map"></div><div id="pilotList" class="list"></div>
+</div>
+
+<div id="pilotPanel" class="card hidden">
+<div class="row spread"><div><div class="k">MI TRANSMISIÓN</div><div class="ttl" style="font-size:18px">Fuentes de posición</div></div><button id="addDevice" class="btn sm">+ dispositivo</button></div>
+<div class="muted">El teléfono funciona ahora. Garmin inReach y SPOT quedan asociados a tu piloto como respaldo.</div>
+<div id="devices" class="devices"></div>
+<div class="warnbox">Si usas el teléfono como baliza, deja esta página abierta. El navegador puede pausar GPS al bloquear pantalla o cambiar de app.</div>
+<div class="grid" style="margin-top:10px"><button id="track" class="btn primary">▶ Empezar GPS</button><button id="landed" class="btn safe">✓ Aterricé, estoy bien</button></div>
+</div>
+
+<div class="controls"><button id="flying" class="btn">🪂 Volando</button><button id="pickup" class="btn">🚗 Recógeme</button><button id="sos" class="btn danger">🆘 SOS 2s</button></div>
+</section>
+</div>
+
+<div id="sheet" class="sheet hidden"><div class="box">
+<div class="row spread"><div class="ttl" style="font-size:18px">Agregar dispositivo</div><button id="close" class="btn sm">Cerrar</button></div>
+<div class="tabs"><button class="tab on" data-k="phone">📱 Teléfono</button><button class="tab" data-k="garmin">🛰️ Garmin</button><button class="tab" data-k="spot">📡 SPOT</button></div>
+<div id="form"></div>
+</div></div>
+<div id="toast" class="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+var FIRE='https://plan-gym-8aff7-default-rtdb.firebaseio.com',ROOT='findwhale2';
+firebase.initializeApp({databaseURL:FIRE+'/'});
+var db=firebase.database(),$=function(s){return document.querySelector(s)};
+var S={id:localStorage.fw2id||('p_'+crypto.randomUUID()),name:localStorage.fw2name||'',role:'pilot',room:null,state:'flying',map:null,markers:{},pilots:{},watch:null,last:null,queue:JSON.parse(localStorage.fw2queue||'[]'),kind:'phone',devices:JSON.parse(localStorage.fw2devices||'[{"kind":"phone","label":"Este teléfono","enabled":true}]'),ref:null,handler:null,timer:null};
+localStorage.fw2id=S.id;
+function esc(x){return String(x==null?'':x).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function toast(t){var e=$('#toast');e.textContent=t;e.classList.add('on');setTimeout(function(){e.classList.remove('on')},2200)}
+function net(){var on=navigator.onLine,e=$('#net');e.textContent=on?'● con internet':'● sin internet';e.className='net '+(on?'on':'off')}addEventListener('online',function(){net();flush()});addEventListener('offline',net);net();
+function code(){var c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',s='';for(var i=0;i<6;i++)s+=c[Math.floor(Math.random()*c.length)];return s}
+function age(t){if(!t)return'—';var s=Math.max(0,Math.floor((Date.now()-t)/1000));if(s<60)return s+' s';var m=Math.floor(s/60);if(m<60)return m+' min';return Math.floor(m/60)+' h '+m%60+' min'}
+function stat(p){if(p.state==='sos')return['bad','SOS'];if(p.state==='landed')return['ground','EN TIERRA'];if(p.state==='pickup')return['warn','RECÓGEME'];var a=Date.now()-(p.ts||0);if(a>600000)return['bad','SIN CONTACTO'];if(a>120000)return['warn','SEÑAL VIEJA'];return['good',p.role==='retrieval'?'RETRIEVAL':'VOLANDO']}
+function identity(){S.name=$('#name').value.trim()||'Piloto';S.role=$('#role').value;localStorage.fw2name=S.name}
+function url(c){return location.origin+location.pathname+'?room='+encodeURIComponent(c)}
+async function createRoom(){identity();var c=code();await db.ref(ROOT+'/rooms/'+c).set({createdAt:firebase.database.ServerValue.TIMESTAMP,createdBy:S.id});enter(c)}
+async function enter(c){identity();c=String(c||'').trim().toUpperCase();if(c.length<4)return toast('Código incompleto');S.room=c;localStorage.fw2room=c;localStorage.fw2role=S.role;$('#home').classList.add('hidden');$('#session').classList.remove('hidden');$('#roomCode').textContent=c;$('#rolePill').textContent=S.role==='pilot'?'🪂 piloto':S.role==='retrieval'?'🚗 retrieval':'👀 observador';$('#pilotPanel').classList.toggle('hidden',S.role!=='pilot');mapInit();listen();await publish({state:S.role==='pilot'?'flying':'watching'});devices();history.replaceState(null,'',url(c));setTimeout(function(){S.map.invalidateSize()},100)}
+function mapInit(){if(S.map)return;S.map=L.map('map',{attributionControl:false}).setView([19.06,-100.09],10);L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{maxZoom:16}).addTo(S.map)}
+function listen(){if(S.ref&&S.handler)S.ref.off('value',S.handler);S.ref=db.ref(ROOT+'/live/'+S.room);S.handler=function(s){S.pilots=s.val()||{};render();markers()};S.ref.on('value',S.handler)}
+function source(){var d=S.devices.filter(function(x){return x.enabled})[0]||S.devices[0];return d&&d.kind==='garmin'?'Garmin inReach':d&&d.kind==='spot'?'SPOT':'Teléfono'}
+async function publish(extra){if(!S.room)return;var x={name:S.name,role:S.role,state:S.state,device:source(),ts:Date.now()},k;extra=extra||{};for(k in extra)x[k]=extra[k];if(S.last){x.lat=S.last.lat;x.lng=S.last.lng;x.alt=S.last.alt;x.speed=S.last.speed;x.heading=S.last.heading;x.accuracy=S.last.accuracy}try{await db.ref(ROOT+'/live/'+S.room+'/'+S.id).update(x)}catch(e){}}
+function render(){var a=[];Object.keys(S.pilots).forEach(function(id){var p=S.pilots[id];p.id=id;a.push(p)});a.sort(function(a,b){if(a.id===S.id)return-1;if(b.id===S.id)return 1;return(a.name||'').localeCompare(b.name||'')});$('#pilotList').innerHTML=a.map(function(p){var z=stat(p),ico=p.role==='retrieval'?'🚗':p.role==='watcher'?'👀':p.state==='landed'?'🧍':'🪂';return'<div class="pilot '+(p.id===S.id?'me':'')+'" data-id="'+esc(p.id)+'"><div class="av">'+ico+'</div><div><div class="pn">'+esc(p.name||'?')+(p.id===S.id?' · tú':'')+'</div><div class="pi">'+(p.alt!=null?Math.round(p.alt)+' m · ':'')+(p.speed!=null?Math.round(p.speed)+' km/h · ':'')+esc(p.device||'—')+' · hace '+age(p.ts)+'</div></div><div class="st '+z[0]+'">'+z[1]+'</div></div>'}).join('')||'<div class="muted">Esperando a los demás…</div>';document.querySelectorAll('.pilot').forEach(function(e){e.onclick=function(){focus(e.dataset.id)}})}
+function icon(p){var z=stat(p),c=z[0]==='bad'?'#ff5f6d':z[0]==='warn'?'#ffc857':z[0]==='ground'?'#55a7ff':'#48d783',i=p.role==='retrieval'?'🚗':p.state==='landed'?'🧍':'🪂';return L.divIcon({className:'',html:'<div style="width:36px;height:36px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:'+c+';border:3px solid white;display:grid;place-items:center;box-shadow:0 3px 8px #0005"><span style="transform:rotate(45deg);font-size:17px">'+i+'</span></div>',iconSize:[36,36],iconAnchor:[18,32]})}
+function markers(){if(!S.map)return;var live={};Object.keys(S.pilots).forEach(function(id){var p=S.pilots[id];if(!Number.isFinite(+p.lat)||!Number.isFinite(+p.lng))return;live[id]=1;if(!S.markers[id])S.markers[id]=L.marker([p.lat,p.lng],{icon:icon(p)}).addTo(S.map);else{S.markers[id].setLatLng([p.lat,p.lng]);S.markers[id].setIcon(icon(p))}S.markers[id].bindTooltip(esc(p.name||'?')+' · '+stat(p)[1],{direction:'top'})});Object.keys(S.markers).forEach(function(id){if(!live[id]){S.map.removeLayer(S.markers[id]);delete S.markers[id]}})}
+function focus(id){var p=S.pilots[id];if(p&&Number.isFinite(+p.lat))S.map.setView([p.lat,p.lng],15)}
+function fit(){var a=[];Object.values(S.pilots).forEach(function(p){if(Number.isFinite(+p.lat))a.push([+p.lat,+p.lng])});if(a.length)S.map.fitBounds(a,{padding:[30,30],maxZoom:14})}
+function startGPS(){if(S.role!=='pilot')return;if(!navigator.geolocation)return toast('Sin GPS');if(S.watch!==null)navigator.geolocation.clearWatch(S.watch);$('#track').textContent='● GPS activo';S.watch=navigator.geolocation.watchPosition(function(pos){var c=pos.coords;S.last={lat:c.latitude,lng:c.longitude,alt:c.altitude,speed:c.speed==null?null:c.speed*3.6,heading:c.heading,accuracy:c.accuracy,ts:Date.now()};$('#agePill').textContent='GPS · '+Math.round(c.accuracy||0)+' m';enqueue(S.last);publish({device:'Teléfono',ts:S.last.ts})},function(e){toast('GPS: '+e.message)},{enableHighAccuracy:true,maximumAge:2000,timeout:20000});try{if('wakeLock'in navigator)navigator.wakeLock.request('screen')}catch(e){}}
+function enqueue(p){S.queue.push({lat:p.lat,lng:p.lng,alt:p.alt,speed:p.speed,heading:p.heading,ts:p.ts});if(S.queue.length>2500)S.queue=S.queue.slice(-2500);localStorage.fw2queue=JSON.stringify(S.queue);if(S.queue.length>=10)flush()}
+async function flush(){if(!S.room||!S.queue.length||!navigator.onLine)return;var b=S.queue.slice(0,60);try{await db.ref(ROOT+'/tracks/'+S.room+'/'+S.id).push({from:b[0].ts,to:b[b.length-1].ts,points:b});S.queue=S.queue.slice(b.length);localStorage.fw2queue=JSON.stringify(S.queue)}catch(e){}}
+setInterval(flush,30000);setInterval(function(){if(S.room){render();var p=S.pilots[S.id];$('#agePill').textContent=p&&p.ts?'último punto · '+age(p.ts):'sin posición'}},10000);
+function devices(){$('#devices').innerHTML=S.devices.map(function(d){var ico=d.kind==='garmin'?'🛰️':d.kind==='spot'?'📡':'📱',sub=d.kind==='phone'?'GPS del navegador':d.kind==='garmin'?'MapShare · '+esc(d.identifier||'sin ID'):'SPOT feed · '+esc(d.identifier||'sin ID');return'<div class="device"><div class="di">'+ico+'</div><div><div class="dt">'+esc(d.label||d.kind)+'</div><div class="ds">'+sub+'</div></div><div class="tag">'+(d.enabled?'ACTIVO':'BACKUP')+'</div></div>'}).join('');$('#sourcePill').textContent=source()==='Garmin inReach'?'🛰️ Garmin':source()==='SPOT'?'📡 SPOT':'📱 teléfono'}
+function openSheet(k){S.kind=k||'garmin';$('#sheet').classList.remove('hidden');document.querySelectorAll('.tab').forEach(function(t){t.classList.toggle('on',t.dataset.k===S.kind)});form()}
+function form(){if(S.kind==='phone'){$('#form').innerHTML='<div class="muted" style="margin-top:12px">El teléfono ya está listo. Usa “Empezar GPS”.</div>';return}var gar=S.kind==='garmin';$('#form').innerHTML='<label>Nombre</label><input id="dl" value="'+(gar?'Garmin inReach':'SPOT')+'"><label>'+(gar?'MapShare Identifier':'Public Feed ID')+'</label><input id="did" placeholder="'+(gar?'Identificador de MapShare':'Feed ID de SPOT')+'"><div class="warnbox">'+(gar?'Garmin expone un feed KML de MapShare.':'SPOT expone un feed público.')+' Para traerlo automáticamente al mapa hace falta un pequeño bridge HTTPS; GitHub Pages no puede guardar credenciales ni actuar como servidor.</div><button id="saveD" class="btn primary" style="width:100%;margin-top:10px">Guardar dispositivo</button>';$('#saveD').onclick=saveDevice}
+function saveDevice(){var id=$('#did').value.trim();if(!id)return toast('Falta el identificador');S.devices=S.devices.filter(function(d){return d.kind!==S.kind});S.devices.push({kind:S.kind,label:$('#dl').value.trim()||S.kind,identifier:id,enabled:false});localStorage.fw2devices=JSON.stringify(S.devices);devices();$('#sheet').classList.add('hidden');publish();toast('Dispositivo guardado')}
+function state(x){S.state=x;publish({state:x,ts:Date.now()});toast(x==='landed'?'En tierra y bien':x==='pickup'?'RECÓGEME activado':x==='flying'?'Volando':'SOS activado')}
+function sos(){var b=$('#sos'),start=function(e){e.preventDefault();clearTimeout(S.timer);S.timer=setTimeout(function(){state('sos')},2000)},stop=function(){clearTimeout(S.timer)};['mousedown','touchstart'].forEach(function(x){b.addEventListener(x,start,{passive:false})});['mouseup','mouseleave','touchend','touchcancel'].forEach(function(x){b.addEventListener(x,stop)})}
+async function leave(){if(S.watch!==null)navigator.geolocation.clearWatch(S.watch);if(S.room)try{await db.ref(ROOT+'/live/'+S.room+'/'+S.id).remove()}catch(e){}localStorage.removeItem('fw2room');history.replaceState(null,'',location.pathname);location.reload()}
+$('#create').onclick=createRoom;$('#showJoin').onclick=function(){$('#joinBox').classList.toggle('hidden')};$('#join').onclick=function(){enter($('#joinCode').value)};$('#fit').onclick=fit;$('#track').onclick=startGPS;$('#landed').onclick=function(){state('landed')};$('#flying').onclick=function(){state('flying')};$('#pickup').onclick=function(){state('pickup')};$('#leave').onclick=leave;$('#addDevice').onclick=function(){openSheet('garmin')};$('#close').onclick=function(){$('#sheet').classList.add('hidden')};document.querySelectorAll('.tab').forEach(function(t){t.onclick=function(){S.kind=t.dataset.k;document.querySelectorAll('.tab').forEach(function(x){x.classList.toggle('on',x===t)});form()}});$('#copy').onclick=function(){navigator.clipboard.writeText(S.room||'').then(function(){toast('Código copiado')})};$('#share').onclick=async function(){var u=url(S.room);if(navigator.share)await navigator.share({title:'Find Whale',text:'Síguenos en Find Whale · '+S.room,url:u});else navigator.clipboard.writeText(u).then(function(){toast('Link copiado')})};sos();
+var q=new URLSearchParams(location.search),qr=q.get('room');if(S.name)$('#name').value=S.name;if(qr){$('#joinBox').classList.remove('hidden');$('#joinCode').value=qr.toUpperCase()}var saved=localStorage.fw2room;if(saved&&!qr){S.role=localStorage.fw2role||'pilot';$('#role').value=S.role;enter(saved)}
+</script>
+</body>
+</html>
