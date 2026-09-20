@@ -66,25 +66,20 @@
     box-shadow:0 1px 5px rgba(0,0,0,.3)}
   .leaflet-tooltip-top:before{border-top-color:rgba(255,255,255,.94)}
 
-  /* ===== LA ALARMA: cuanto tiempo lleva sin dar señales =====
-     Pam pidio que lo diga SIEMPRE, desde el minuto 1. Asi que sube de color
-     poco a poco: al principio es normal perder señal en una ladera, y al
-     final ya no lo es. Los colores van de menos a mas. */
+  /* ===== EL TIEMPO SIN SEÑAL =====
+     Pam tenia razon: poner rojo da sensacion de alarma cuando a lo mejor solo
+     has pasado detras de una loma. Mejor decir el DATO limpio ("lleva 4
+     minutos sin señal") y que decida quien lo lee, que conoce el terreno.
+     Por eso: un solo color neutro, sin avisos rojos ni parpadeos. */
   #alarma:empty{display:none}
-  #alarma{color:#fff;padding:12px 14px;margin:0;
-    font-size:14px;font-weight:700;line-height:1.45;position:relative;z-index:1300;
-    background:#4a7c94}
+  #alarma{color:#fff;padding:12px 14px;margin:0;background:#5b7a8a;
+    font-size:14px;font-weight:700;line-height:1.45;position:relative;z-index:1300}
   #alarma b{font-size:16px}
-  #alarma .sub{font-weight:600;font-size:12.5px;opacity:.93;margin-top:3px}
-  #alarma .barraTiempo{height:4px;background:rgba(255,255,255,.28);border-radius:3px;
+  #alarma .sub{font-weight:600;font-size:12.5px;opacity:.88;margin-top:3px}
+  #alarma .barraTiempo{height:3px;background:rgba(255,255,255,.25);border-radius:3px;
     margin-top:8px;overflow:hidden}
-  #alarma .barraTiempo i{display:block;height:100%;background:#fff;border-radius:3px;
-    transition:width .5s linear}
-  /* los cuatro escalones (Pam: el amarillo desde el minuto 1) */
-  #alarma.t1{background:#4a7c94}         /* menos de 1 min : informativo */
-  #alarma.t2{background:#c98a00}         /* 1 - 5 min      : atento */
-  #alarma.t3{background:var(--naranja)}  /* 5 - 15 min     : ponte en marcha */
-  #alarma.t4{background:var(--rojo);animation:late 1.3s ease-in-out infinite}  /* 15+ : ve a mirar */
+  #alarma .barraTiempo i{display:block;height:100%;background:rgba(255,255,255,.75);
+    border-radius:3px;transition:width .6s linear}
 
   /* ===== BOTONES DE ESTADO =====
      Dos filas: arriba el estado (volando / en tierra), abajo las llamadas
@@ -124,8 +119,9 @@
   .pil.vuela .eti{background:#e3f7e9;color:#12693a}
   .pil.aterrizo{border-left-color:var(--mar2)}
   .pil.aterrizo .eti{background:#e2f1f9;color:var(--mar)}
-  .pil.mudo{border-left-color:var(--naranja)}
-  .pil.mudo .eti{background:#fdf1e0;color:#8a4d00}
+  /* sin señal: gris neutro, sin alarma (solo el tiempo) */
+  .pil.mudo{border-left-color:#9fb2bc}
+  .pil.mudo .eti{background:#eef3f6;color:#5b7a8a}
   .pil.sos{border-left-color:var(--rojo);background:#fff5f5}
   .pil.sos .eti{background:#fde3e3;color:var(--rojo)}
   .pil.recoge{border-left-color:var(--naranja);background:#fffaf2}
@@ -567,44 +563,26 @@ function pintaAlarma(todos){
     if (p.id === yo.id) return;              /* el mio no me lo aviso a mi mismo */
     const seg = (Date.now() - (p.visto || 0)) / 1000;
     const volando = (p.estado !== 'tierra' && p.estado !== 'sos');
-    /* desde los 45 segundos: asi un microcorte no dispara el aviso */
-    if (volando && seg >= 45){
+    if (volando && seg >= 60){               /* desde el minuto 1, como pidio Pam */
       raros.push({ n:p.nombre || '?', seg:seg, p:p });
     }
   });
 
   const caja = $('alarma');
-  if (!raros.length){ caja.innerHTML = ''; caja.className = ''; return; }
+  if (!raros.length){ caja.innerHTML = ''; return; }
 
   /* el que lleva mas tiempo manda */
   raros.sort((a, b) => b.seg - a.seg);
   const g = raros[0];
-  const mins = g.seg / 60;
-  const otros = raros.length > 1 ? ' (y ' + (raros.length - 1) + ' más)' : '';
+  const otros = raros.length > 1 ? ' (+' + (raros.length - 1) + ')' : '';
+  /* la barra se llena hasta los 30 minutos */
+  const pct = Math.min(100, (g.seg / 1800) * 100);
 
-  let nivel, izq, consejo;
-  if (mins >= 15){
-    nivel = 4; izq = '🆘';
-    consejo = 'Última posición conocida: la del mapa. Puede ser una zona sin cobertura… '
-            + 'o puede haber pasado algo. <b>Ve a mirar.</b>';
-  } else if (mins >= 5){
-    nivel = 3; izq = '⚠️';
-    consejo = 'Ya son muchos minutos. Si conoces la zona, mira por dónde iba.';
-  } else if (seg >= 60){
-    nivel = 2; izq = '⚠️';
-    consejo = 'Sin señal. Sigue atento: si pasa de 5 minutos, ponte en marcha.';
-  } else {
-    nivel = 1; izq = '📵';
-    consejo = 'Es normal: una ladera o un valle sin cobertura. Se soluciona solo.';
-  }
-
-  /* la barra se llena hasta los 15 minutos (que es cuando se pone rojo) */
-  const pct = Math.min(100, (g.seg / 900) * 100);
-
-  caja.className = 't' + nivel;
-  caja.innerHTML = izq + ' <b>' + g.n + ' lleva ' + tiempoEnPalabras(g.seg)
-    + ' sin dar señal' + otros + '</b>'
-    + '<div class="sub">' + consejo + '</div>'
+  /* SIN avisos de alarma: solo el dato. Quien lo lee conoce el terreno y sabe
+     si 4 minutos es normal o es raro. La app no tiene que opinar. */
+  caja.innerHTML = '📵 <b>' + g.n + ' · ' + tiempoEnPalabras(g.seg) + ' sin señal' + otros + '</b>'
+    + '<div class="sub">Su última posición es la del mapa. '
+    + 'Se pondrá al día sola en cuanto recupere cobertura.</div>'
     + '<div class="barraTiempo"><i style="width:' + pct.toFixed(1) + '%"></i></div>';
 }
 
@@ -645,12 +623,11 @@ function pinta(todos){
     if (p.estado === 'sos'){ cls = 'sos'; eti = '🆘 AYUDA'; }
     else if (p.estado === 'retrieval'){ cls = 'recoge'; eti = '🚗 RECÓGEME'; }
     else if (p.estado === 'tierra'){ cls = 'aterrizo'; eti = 'EN TIERRA'; }
-    /* en vuelo, enseño SIEMPRE cuanto lleva sin dar señal (desde el minuto 1) */
-    else if (seg >= 45){
+    /* en vuelo, enseño SIEMPRE cuanto lleva sin dar señal (desde el minuto 1).
+       Sin iconos de alarma: el tiempo es el dato, y quien mira decide. */
+    else if (seg >= 60){
       cls = 'mudo';
-      const m = Math.floor(seg / 60);
-      eti = seg < 60 ? '📵 ' + Math.floor(seg) + 's'
-                     : (m >= 15 ? '🔴 ' + m + ' MIN SIN SEÑAL' : '⚠️ ' + m + ' MIN SIN SEÑAL');
+      eti = '📵 ' + Math.floor(seg / 60) + ' min';
     }
     const col = (COLORES.find(c => c.id === p.color) || {}).c || '#888';
     const alt = p.alt ? Math.round(p.alt) + ' m' : '—';
