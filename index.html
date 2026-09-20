@@ -66,6 +66,17 @@
     box-shadow:0 1px 5px rgba(0,0,0,.3)}
   .leaflet-tooltip-top:before{border-top-color:rgba(255,255,255,.94)}
 
+  /* ===== LA ALARMA DE SIN CONTACTO =====
+     Si alguien lleva demasiado tiempo sin mandar punto y decia que estaba
+     volando, se avisa en rojo y grande. Sin esto el que espera abajo no sabe
+     si su amigo esta tranquilo o si ha pasado algo. */
+  #alarma:empty{display:none}
+  #alarma{background:var(--rojo);color:#fff;padding:13px 14px;margin:0;
+    font-size:14px;font-weight:700;line-height:1.45;position:relative;z-index:1300}
+  #alarma b{font-size:16px}
+  #alarma .sub{font-weight:600;font-size:12.5px;opacity:.92;margin-top:3px}
+  #alarma.aviso-suave{background:var(--naranja)}
+
   /* ===== BOTONES DE ESTADO =====
      Dos filas: arriba el estado (volando / en tierra), abajo las llamadas
      (recogeme / ayuda). Asi el boton de emergencia no se toca sin querer. */
@@ -181,6 +192,11 @@
   </div>
 
   <div id="mapa"></div>
+
+  <!-- ===== ALARMA: alguien lleva demasiado tiempo sin mandar señal =====
+       Esto es lo importante: sin esto, el que espera abajo no sabe si su
+       amigo esta volando tranquilo o si ha pasado algo. -->
+  <div id="alarma"></div>
 
   <div class="estado" id="estado">
     <div class="filaEst">
@@ -519,8 +535,72 @@ function acercaA(id){
   }
 }
 
+/* ===== LA ALARMA: ¿alguien lleva mucho sin dar señales? =====
+   OJO: perder señal es NORMAL volando (una ladera, un valle). Por eso el
+   umbral es alto. A los 10 minutos se pone en naranja (ojo), y a los 20 en
+   ROJO (puede haber pasado algo). No es un diagnostico: es una señal de que
+   hay que empezar a moverse. */
+function pintaAlarma(todos){
+  const raros = [];
+  todos.forEach(p => {
+    if (p.id === yo.id) return;              /* el mio no me lo aviso a mi mismo */
+    const seg = (Date.now() - (p.visto || 0)) / 1000;
+    const volando = (p.estado !== 'tierra' && p.estado !== 'sos');
+    if (volando && seg > 600){
+      raros.push({ n:p.nombre || '?', min: Math.floor(seg / 60), grave: seg > 1200, p:p });
+    }
+  });
+
+  const caja = $('alarma');
+  if (!raros.length){ caja.innerHTML = ''; caja.classList.remove('aviso-suave'); return; }
+
+  /* el mas grave manda */
+  raros.sort((a, b) => b.min - a.min);
+  const g = raros[0];
+  const otros = raros.length > 1 ? ' (y ' + (raros.length - 1) + ' más)' : '';
+
+  if (g.grave){
+    caja.classList.remove('aviso-suave');
+    caja.innerHTML = '🆘 <b>' + g.n + ' lleva ' + g.min + ' minutos sin dar señal' + otros + '</b>'
+      + '<div class="sub">Última posición conocida: la del mapa. '
+      + 'Puede ser una zona sin cobertura… o puede haber pasado algo. <b>Ve a mirar.</b></div>';
+  } else {
+    caja.classList.add('aviso-suave');
+    caja.innerHTML = '⚠️ <b>' + g.n + ' lleva ' + g.min + ' minutos sin señal' + otros + '</b>'
+      + '<div class="sub">Es normal si está en una zona sin cobertura. Si pasa de 20 minutos, preocúpate.</div>';
+  }
+}
+
+/* ==========================================================================
+   EL SMS DE EMERGENCIA
+   Los SMS salen con MUCHO menos señal que los datos. Con una rayita donde
+   internet no va, un SMS si sale. Y el 112 funciona en cualquier red.
+   ========================================================================== */
+function mensajeSOS(){
+  const p = ultimaPos || {};
+  const lat = p.lat != null ? p.lat.toFixed(5) : '';
+  const lon = p.lon != null ? p.lon.toFixed(5) : '';
+  const alt = p.alt ? Math.round(p.alt) + 'm' : '';
+  const mapa = (lat && lon) ? ' https://maps.google.com/?q=' + lat + ',' + lon : '';
+  return 'SOS parapente. ' + (yo ? yo.nombre : '') + '. Necesito ayuda.'
+       + (lat ? ' Posicion: ' + lat + ', ' + lon + ' ' + alt + '.' + mapa : ' (sin posicion GPS todavia)');
+}
+
+function mandaSMS(){
+  const txt = mensajeSOS();
+  /* abro el movil con el mensaje ya escrito: solo hay que darle a enviar */
+  const num = prompt('¿A qué número mando el aviso? (o cancela y llama al 112)', '');
+  if (num === null) return;
+  location.href = 'sms:' + num + '?&body=' + encodeURIComponent(txt);
+}
+
+function llama112(){
+  location.href = 'tel:112';
+}
+
 function pinta(todos){
   ultimosPilotos = todos;
+  pintaAlarma(todos);
   $('lista').innerHTML = todos.map(p => {
     const esYo = p.id === yo.id;
     const seg = (Date.now() - (p.visto || 0)) / 1000;
@@ -630,9 +710,18 @@ $('bRecoge').onclick = () => {
 $('bSos').onclick = () => {
   if (miEstado === 'sos'){ ponEstado('vuelo'); return; }
   ponEstado('sos');
+  /* Este aviso es DISTINTO: no solo avisa a los que siguen, tambien deja
+     mandar el aviso por SMS o llamar, que funcionan con mucha menos señal
+     que los datos. Si no hay internet, esto es lo unico que sale. */
   aviso('🆘 ALERTA MANDADA',
-    'Los que te siguen ven <b>AYUDA</b> en rojo, en grande, y tu última posición.<br><br>' +
-    'Tócalo otra vez para quitarlo.', 8000);
+    'Los que te siguen ven <b>AYUDA</b> en rojo con tu última posición.'
+    + '<div style="background:#fde3e3;border-radius:9px;padding:10px;margin-top:11px;font-size:13px">'
+    + '⚠️ <b>Si no tienes señal, esto no les llega.</b><br>'
+    + 'Mándalo también por SMS o llama — sale con menos cobertura.'
+    + '</div>'
+    + '<button class="btn" style="margin-top:11px" onclick="mandaSMS()">📱 MANDAR MI POSICIÓN POR SMS</button>'
+    + '<button class="btn" style="margin-top:8px;background:#c62828;box-shadow:0 3px 0 #7f1414" '
+    + 'onclick="llama112()">📞 LLAMAR AL 112</button>');
 };
 
 /* ==========================================================================
@@ -718,6 +807,9 @@ async function arranca(comparte){
   sube();
   setInterval(pintaRastro, 60000);
   setInterval(() => { if (enCola()) sube(); }, 20000);
+  /* la alarma y los "hace X minutos" tienen que refrescarse SOLOS, aunque
+     nadie mande nada nuevo. Si no, la alarma no apareceria nunca. */
+  setInterval(() => { if (ultimosPilotos.length) pinta(ultimosPilotos); }, 60000);
 }
 
 /* ==========================================================================
